@@ -1,5 +1,4 @@
 # get top statistics from null simulations. In next step, will compare test statistic against these top statistics to get high resolution p-value.
-# ex/ have top 1000 pvals out of 5e9 null snps. If test stat < (only 3 of the 1000 top values), then test stat < 3 null values out of all 5e9. then pval is P(nullBF < testBF) = 3/5e9, but only had to check against 1000 values instead of 5e9 for each snp
 
 from __future__ import print_function
 
