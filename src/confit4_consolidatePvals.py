@@ -26,14 +26,14 @@ if args.outdir[-1] = "/":
 
 # read the BFs from file to get BFs_A
 BFs_A = []
-with open(args.outdir + "/" + args.exptName + "_BFs.txt") as f:
+with open(args.outdir + "/" + args.exptName + "_confit.txt") as f:
     f.readline() # skip header
     for line in f:
         BFs_A.append(float(line.rstrip().split()[-1]))
 
 # read the top Null BFs from file in ascending order 
 topBFsNull = []
-with open("%s/%s_topBFsnull.txt" % (args.outdir, args.exptName)) as f:
+with open("%s/%s_topFsnull.txt" % (args.outdir, args.exptName)) as f:
     f.readline() # skip header
     for line in f:
         topBFsNull.append(float(line.rstrip()) )
@@ -89,7 +89,7 @@ nGreaterLowRes = np.ones((nSnp))
 
 for i in range(nSnp):
     if i%500000==0:
-        print("Getting pval for snp %d..." % i, file=sys.stderr)
+        print("Getting low res pval for snp %d..." % i, file=sys.stderr)
 
     # compare each snp to subset of null values
 
@@ -121,10 +121,10 @@ for i in range(nSnp):
 
 
 # combine with the _BFs.txt file
-with open(args.outdir + "/" + args.exptName + "_BFwpvals.txt", "w") as outf:
-    with open(args.outdir + "/" + args.exptName + "_BFs.txt") as f:
+with open(args.outdir + "/" + args.exptName + "_confitwpvals.txt", "w") as outf:
+    with open(args.outdir + "/" + args.exptName + "_confit.txt") as f:
         header = f.readline().rstrip()
-        header += " nNullGreaterThanBF_top nNullGreaterThanBF_lowres nNullGreaterThanBF_lowres_flat\n"
+        header += " nNullGreaterThan_top nNullGreaterThan_lowres nNullGreaterThan_lowres_flat\n"
         outf.write(header)
         i = 0 # to get corresponding pval
         for line in f: 

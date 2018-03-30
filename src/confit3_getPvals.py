@@ -54,16 +54,16 @@ for i in range(1, args.nNullRounds+1): # taskID starts from 1
     topNullsSoFar.sort(reverse=True) # sort list after each file, top BF first
     topNullsSoFar = topNullsSoFar[0:nTopNull] # take top 250 or w/e each time
     if i%20 == 0:
-        print("read null BFs round %d" % i, file=sys.stderr)
+        print("reading null CONFIT statistics, round %d" % i, file=sys.stderr)
     if nNullSoFar == args.nNullTotal:
         break 
 
 topNullsSoFar.sort() # now sort so smallest is first
 
 print("read %d null SNPs total" % nNullSoFar, file=sys.stderr)
-outName = "%s/%s_topBFsnull.txt" % (args.outdir, args.exptName)
+outName = "%s/%s_topFsnull.txt" % (args.outdir, args.exptName)
 with open(outName, "w") as outf:
-    outf.write("Top%dNullBFs_outOf_%d\n" % (nTopNull,nNullSoFar))
+    outf.write("Top%dNullFs_outOf_%d\n" % (nTopNull,nNullSoFar))
 
     for BFnull in topNullsSoFar:
         outf.write("%f\n" % BFnull)

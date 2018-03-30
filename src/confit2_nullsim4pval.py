@@ -26,8 +26,6 @@ parser.add_argument("--nTraits",  type=int, default=2)
 parser.add_argument("--traits", nargs='*', default=None) 
 parser.add_argument("--Sigma_Z_file", type=str, default=None) # which finland Sigma_Z to use for null simulation. If none, use identity
 
-parser.add_argument("--mu_guess_prior",type=str,default="_CE")
-parser.add_argument("--mu_guess_const", type=float, default=5.2)
 parser.add_argument("--sigmasq_mu_guess", type=float, default=None)
 
 parser.add_argument("--nNullPerRound", type=int, default=2*10**6) # how many snp per iteration of the for loop
@@ -70,7 +68,7 @@ with open(nullFile, 'w') as nullf:
         if r % 10 == 0:
             print("round %d..." % r, file=sys.stderr)
 
-        BFs_null = genBF_nullsim(weights_A, args.nNullPerRound, nTraits, args.mu_guess_prior, Sigma_Z, mu_guess=args.mu_guess_const, sigmasq_mu_guess=args.sigmasq_mu_guess)
+        BFs_null = genBF_nullsim(weights_A, args.nNullPerRound, nTraits, Sigma_Z, args.sigmasq_mu_guess)
 
         for BFnull in BFs_null:
             nullf.write(str(BFnull) + "\n")
