@@ -14,7 +14,7 @@ import random
 
 # estimates P(c) 
 # by checking where gwas p-val < thresh for each trait, for each snp
-def estimateWtsFromGwas(gwasPvals, configs, thresh = 1e-4, minPrior=1e-8, avg1active=True):
+def estimateWtsFromGwas(gwasPvals, configs, thresh=1e-4, minPrior=1e-8, avg1active=True):
   
     # get gwas config, convert rows to tuples
     gwasConfigs = -9*np.ones_like(gwasPvals) 
@@ -49,7 +49,7 @@ def estimateWtsFromGwas(gwasPvals, configs, thresh = 1e-4, minPrior=1e-8, avg1ac
                 estWtsD[c] = 1.0*sum1active/len(c)
 
     # rescale estWtsD so weights sum to 1
-    # also set Pr(c0) as frac of snps that are GWAS significant in 1+ trait
+    # also set Pr(c0) as frac of snps that are GWAS significant in 1+ trait (or to small value if none are gwas sig)
     altConfigs = list(configs)
     nTraits = len(configs[0])
     altConfigs.remove((0,)*nTraits)
@@ -57,7 +57,7 @@ def estimateWtsFromGwas(gwasPvals, configs, thresh = 1e-4, minPrior=1e-8, avg1ac
     snpIndices = np.where(MIgwasPvals < 5e-8)
     nSig = len(snpIndices[0])
     nSnp = len(MIgwasPvals)
-    pAlt = 1.0*nSig/nSnp
+    pAlt = max(1.0*nSig/nSnp, minPrior)
 
     estWtsD[(0,)*nTraits] = 1 - pAlt
     sumGivenSig = sum([estWtsD[c] for c in altConfigs]) # sum p(c|gwas sig) for alt c
@@ -72,9 +72,8 @@ def estimateWtsFromGwas(gwasPvals, configs, thresh = 1e-4, minPrior=1e-8, avg1ac
 
 # get BFs assuming (z|c) ~ MVN(0, sigmasq*diag(c) + Sigma_e)
 # BF = sum_c [P(c) P(z|c,mu_guess)]/P(c0)P(z|c0)
-def computeCONFIT(gwasZscores, ternEstWtsD, sigmasq_mu_guess, nSnp, nTraits, Sigma_Z):
+def computeCONFITstats(gwasZscores, estWtsD, sigmasq_mu_guess, nSnp, nTraits, Sigma_Z):
     
-    estWtsD = ternEstWtsD # Using non-binary
     configs = list(itertools.product((0,1),repeat=nTraits)) 
     altConfigs = list(configs)
     altConfigs.remove((0,)*nTraits)
@@ -82,8 +81,6 @@ def computeCONFIT(gwasZscores, ternEstWtsD, sigmasq_mu_guess, nSnp, nTraits, Sig
 
     # divide off-diagonal elements of empirical covariance by 2 (50% herit)
     Sigma_e = 0.5*Sigma_Z + 0.5*np.identity(nTraits)
-    #print("Halving off-diagonals of Sigma_Z to get Sigma_e", file=sys.stderr)
-    #print(Sigma_e, file=sys.stderr)
     Sigma_e = np.matrix(Sigma_e)
 
     # get P(z|c) with prior on lambda 
@@ -123,22 +120,24 @@ def computeCONFIT(gwasZscores, ternEstWtsD, sigmasq_mu_guess, nSnp, nTraits, Sig
 
     return BFs
 
-##############################################################################
+###############################################################
 
 # perform null simulations for significance threshold
 # return BFs from 1 panel of null snps in a vector, where z ~ N(0, \Sigma_Z) under null
-def genBF_nullsim(weights_A, nNullPerRound, nTraits, Sigma_Z, sigmasq_mu_guess, returnMI=False):
+# later, use null BFs to get CONFIT pval and threshold
+def genBF_nullsim(weights_A, nNullPerRound, nTraits, Sigma_Z, sigmasq_mu_guess, returnMI=True):
 
     gwasZscores = np.empty((nNullPerRound, nTraits))
     for i in range(nNullPerRound):
         gwasZscores[i,:] = np.random.multivariate_normal(np.zeros(nTraits), Sigma_Z) # each z_v is a dim (nTrait) 
 
+    BFs = computeCONFITstats(gwasZscores, weights_A, sigmasq_mu_guess, nNullPerRound, nTraits, Sigma_Z)
+
     if returnMI: # for MI gwas, return max abs z-score for each snp
-        return(np.amax(np.abs(gwasZscores),axis=1))
-
-    BFs = computeBFs_mu_guess_prior(gwasZscores, weights_A, sigmasq_mu_guess, nNullPerRound, nTraits, Sigma_Z)
-
-    return(BFs) # use null BFs to get CONFIT threshold
+        MIs = np.amax(np.abs(gwasZscores),axis=1)
+        return(zip(MIs, BFs))
+    else:
+        return(BFs) 
 
 ###########################################################################
 
@@ -164,7 +163,7 @@ def tup2strc(config, d=","): # (1,-1) -> "1,-1"
 def str2tupc(config, d=","): #"1,-1" -> (1,-1)
     return tuple([int(c) for c in config.split(d)])
 
-def readSigma_Z(Sigma_Z_file, nTraits):
+def readSigma_Z(Sigma_Z_file, nTraits, verbose=False):
     # read Sigma_Z from file
     if Sigma_Z_file == None: # default is identity
         return np.identity(nTraits)
@@ -175,14 +174,14 @@ def readSigma_Z(Sigma_Z_file, nTraits):
         for line in f:
             Sigma_Z[i,:] = [float(Sij) for Sij in line.rstrip().split()]
             i += 1
-    print(Sigma_Z, file=sys.stderr)
+    if verbose:
+        print(Sigma_Z, file=sys.stderr)
 
     return np.matrix(Sigma_Z)
 
 
 # using true priors on config, select config for each snp, as tuples
 def simulateGwasData(nSnp, nTraits, sigmasq_mu_sim, Sigma_Z, truePriorsD, configs, t1trueSigmasq=None): 
-
     # using true priors on config, select config for each snp, as tuples
     trueConfigs = numpy.random.choice([tup2strc(c) for c in configs], p=[truePriorsD[c] for c in configs],
                             size=nSnp)
@@ -206,26 +205,26 @@ def simulateGwasData(nSnp, nTraits, sigmasq_mu_sim, Sigma_Z, truePriorsD, config
 
 
 
-## read summary statistics from formatted file
-
+# read summary statistics from formatted file
 # for each trait, convert betas and sds to z-scores
-# pylmm output header (for each trait):
-#   SNP_ID BETA BETA_SD F_STAT P_VALUE
 
-def getGwasFile(trait, traitPath, gwasFormat="pylmm"): # get summary stats file name
+def getGwasFileName(trait, traitPath, gwasFormat="pylmm"): # get summary stats file name
     if gwasFormat == "pylmm":
-        s = "%s/%s.out" % (traitPath, trait) 
-    if gwasFormat == "UKbiobank_neale": # NOTE: use sorted files so snps in same order
-        s = "%s/%s.assoc.tsv.sorted" % (traitPath, trait)
+        s = "%s/%s" % (traitPath, trait) 
+    elif gwasFormat == "UKBB_sorted": # NOTE: use sorted files so snps in same order
+        s = "%s/%s" % (traitPath, trait)
+    else:
+        print("ERROR: GWAS format '%s' not recognized" % gwasFormat, file=sys.stderr)
+        exit(1)
     return s
 
 # get snp ids, z-score (t-score), python pval 
-def getSummaryStatsTrait(pheno, gwasFormat=None):
+def getSummaryStatsTrait(pheno, traitPath, gwasFormat):
     print("Reading trait %s..." % pheno, file=sys.stderr)
     snpIDs = []
     gwasZscores_t = []
     gwasPvals_t = []
-    with open( getGwasFile(pheno, gwasFormat) ) as f:
+    with open( getGwasFileName(pheno, traitPath, gwasFormat) ) as f:
         f.readline() # skip header
         for line in f:
             lineL = line.rstrip().split()
@@ -233,7 +232,7 @@ def getSummaryStatsTrait(pheno, gwasFormat=None):
                 snpIDs.append(lineL[0])
                 gwasZscores_t.append( float(lineL[1])/float(lineL[2]) )
                 gwasPvals_t.append( float(lineL[4]) )
-            elif gwasFormat=="UKbiobank_neale":
+            elif gwasFormat=="UKBB_sorted":
                 snpIDs.append(lineL[1]) # rs ID is 2nd col
                 gwasZscores_t.append( float(lineL[-2]) ) # phesant t-score
                 gwasPvals_t.append( float(lineL[-1])) # phesant pval
@@ -248,7 +247,7 @@ def getSummaryStatsTrait(pheno, gwasFormat=None):
     return (snpIDs, gwasZscores_t, gwasPvals_t)
 
 
-def readInGwasData(nSnp, traitsL, Sigma_Z_file, gwasFormat=None, outdir=None, exptName=None):
+def readInGwasData(nSnp, traitsL, traitPath, Sigma_Z_file, gwasFormat):
 
     nTraits = len(traitsL)
 
@@ -266,7 +265,7 @@ def readInGwasData(nSnp, traitsL, Sigma_Z_file, gwasFormat=None, outdir=None, ex
 
     # get summary stats
     for t in range(nTraits):
-        (snpIDs, gwasZscores_t, gwasPvals_t) = getSummaryStatsTrait(traitsL[t], gwasFormat)
+        (snpIDs, gwasZscores_t, gwasPvals_t) = getSummaryStatsTrait(traitsL[t], traitPath, gwasFormat)
         gwasZscores[:,t] = gwasZscores_t
         gwasPvals[:,t] = gwasPvals_t
 
@@ -279,17 +278,14 @@ def readInGwasData(nSnp, traitsL, Sigma_Z_file, gwasFormat=None, outdir=None, ex
         gwasZscores_forSigma = gwasZscores
         Sigma_Z_est = np.corrcoef(np.transpose(gwasZscores_forSigma))
 
-    print(Sigma_Z_est, file=sys.stderr)
-
-
-    # write Sigma_Z to file - nullsim step will use Sigma_Z
+    # write estimated Sigma_Z to file - nullsim step will use Sigma_Z
     with open(Sigma_Z_file,"w") as outf:
         for i in range(nTraits):
             outf.write( " ".join([str(Sij) for Sij in  Sigma_Z_est[i,:]]) + "\n")
 
     Sigma_Z_est = np.matrix(Sigma_Z_est)
 
-    return gwasZscores, gwasPvals, Sigma_Z_est
+    return snpIDs, gwasZscores, gwasPvals, Sigma_Z_est
 
 
 
