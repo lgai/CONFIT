@@ -15,6 +15,7 @@ parser.add_argument("--outdir",type=str,required=True)
 parser.add_argument("--nulldir",type=str,required=True) # where the null files are located
 parser.add_argument("--useSimulatedData",type=int,default=0) # whether or not simulated data was used (affects file format)
 parser.add_argument("--nTraits",type=int,required=True) # how many traits (affects file format)
+parser.add_argument("--traits", nargs='*', default=None) 
 parser.add_argument("--nNullLowRes", type=int, default=10**8
 ) # the max res for low resolution p-values
 parser.add_argument("--nNullFullRes", type=int, default=5*10**9) # for high resolution p-values
@@ -25,7 +26,10 @@ print("\n",file=sys.stderr)
 nNullLowRes = args.nNullLowRes
 nNullFullRes = args.nNullFullRes
 
-nTraits = args.nTraits
+if args.traits != None:
+    nTraits = len(args.traits)
+else:
+    nTraits = args.nTraits
 
 if args.outdir[-1] == "/":
     args.outdir = args.outdir[:-1] # trim trailing slash
@@ -39,10 +43,11 @@ with open(args.outdir + "/" + args.exptName + "_confit.txt") as f:
     for line in f:
         lineL = line.rstrip().split()
         # get max abs gwas z-score across traits
+        #TODO get that I get gwas_z0, gwas_z1, gwas_z2
         if args.useSimulatedData: # first nTraits columns are true config
-            absMI_zs = [abs(float(z)) for z in lineL[nTraits:nTraits*3:2]]
+            absMI_zs = [ abs(float(z)) for z in lineL[nTraits:nTraits*2] ]
         else: # first col is rsID
-            absMI_zs = [abs(float(z)) for z in lineL[1:nTraits*2+1:2]]
+            absMI_zs = [ abs(float(z)) for z in lineL[1:nTraits+1] ]
         print(absMI_zs) # TODO
         MIs_A.append(max(absMI_zs))
         BFs_A.append(float(lineL[-1]))
@@ -93,6 +98,9 @@ while start < nSnp:
     
     start += nSnps_block
 
+nGreaterTopMI[nGreaterTopMI==nNullFullRes] = nNullFullRes * -9 # missing values
+nGreaterTopBF[nGreaterTopBF==nNullFullRes] = nNullFullRes * -9 # missing values
+
 pvalsHighResMI = 1.0/nNullFullRes*nGreaterTopMI
 pvalsHighResBF = 1.0/nNullFullRes*nGreaterTopBF
 
@@ -117,7 +125,7 @@ for jobNo in range(1,500): # look through up to 1000 null files (can change), un
             nullMIs[i] = float(lineL[0])
             nullBFs[i] = float(lineL[-1])
             i += 1
-            if i % 5*10**7 == 0:
+            if i % (5*10**7) == 0:
                 print("Read %d snps for low res so far..." % i,file=sys.stderr)
 
 print("Read %d snps for low res, stopping" % i,file=sys.stderr)
@@ -166,7 +174,7 @@ with open(args.outdir + "/" + args.exptName + "_confitwpvals.txt", "w") as outf:
         outf.write(header)
         i = 0 # to get corresponding pval
         for line in f: 
-            outf.write("%s %s %s %s %s\n" % (
+            outf.write("%s\t%s\t%s\t%s\t%s\n" % (
                 line.rstrip(), 
                 str(pvalsLowResMI[i]),
                 str(pvalsHighResMI[i]),
