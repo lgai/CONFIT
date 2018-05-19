@@ -13,12 +13,12 @@ The code for CONFIT has been split into 4 parts:
 ## Example commands
 Below, we show some example commands with options to be used with a small example dataset. 
 
-#### preliminaries:
+### Preliminaries:
 - requires Python 2.7
 - requires numpy and scipy
 
 
-#### Step 1: Compute the CONFIT test stat on your chosen data
+### Step 1: Compute the CONFIT test stat on your chosen data
 
 For pylmm-formatted data
 python src/confit1_data.py --exptName NFBCexample --outdir exampleOutput  --nSnp 100  --gwasFormat pylmm  --traits NFBC_hdlres.pylmm.out NFBC_ldlres.pylmm.out NFBC_tgres.pylmm.out   --traitPath your/path/to/data/CONFIT_examples/gwasExampleData
@@ -41,7 +41,7 @@ python src/confit1_data.py --exptName simulatedExampleWithOptions --outdir examp
 ```
 
 
-#### Step 2: Null simulations 
+### Step 2: Null simulations 
 - Note: we'll use the UKBB example data for the rest of the example steps
 - In this example, we're running the null simulation step twice, sequentially. In practice, you probably want to do many of these in parallel.
 - We do not compute p-values with much precision in the examples, since one would need to generate many null panels to do so.
@@ -53,13 +53,13 @@ python src/confit2_nullsim4pval.py --exptName UKBBexample --outdir exampleOutput
 ```
 
 
-#### Step 3: Get top test statistics (which will be used to set the p-value threshold)
+### Step 3: Get top test statistics (which will be used to set the p-value threshold)
 ```
 python src/confit3_getTopStatistics.py --exptName UKBBexample --nulldir exampleNullsim --outdir exampleOutput --nTopNull 1000 --nNullFiles 2 --nNullTotal 20000
 ```
 
 
-#### Step 4: Compute p-values for MI GWAS and CONFIT test statistics
+### Step 4: Compute p-values for MI GWAS and CONFIT test statistics
 ```
 python src/confit4_consolidatePvals.py --exptName UKBBexample --outdir exampleOutput --nulldir exampleNullsim --useSimulatedData 0 --nTraits 3 --nNullLowRes 5000
 ```
