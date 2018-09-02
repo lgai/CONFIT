@@ -24,7 +24,7 @@ parser.add_argument("--nulldir",  type=str, required=True) # where to require ou
 parser.add_argument("--taskID", type=str, default="") # label for each output null file
 
 # can either pass multiple trait names, or specify nTraits
-parser.add_argument("--nTraits",  type=int, default=2)
+parser.add_argument("--nTraits",  type=int, default=None)
 parser.add_argument("--traits", nargs='*', default=None) 
 parser.add_argument("--Sigma_Z_file", type=str, default=None) # which Sigma_Z file to use for null simulation. If none, use filename based on exptName. If "identity", use identity matrix
 parser.add_argument("--wtsFile", type=str, default=None) # the estimated P(c) file.

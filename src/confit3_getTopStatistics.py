@@ -21,7 +21,7 @@ parser.add_argument("--outdir",type=str,required=True)
 parser.add_argument("--nNullFiles", type=int, default=100) # how many nullsim files to read
 parser.add_argument("--nNullTotal", type=int, default=5*10**9) # desired p-value resolution
 
-parser.add_argument("--nTopNull",type=int,default=1000) # how many of top pvalues
+parser.add_argument("--nTopNull",type=int,default=1000) # how many of top null
 
 
 
